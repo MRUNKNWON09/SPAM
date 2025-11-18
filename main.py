@@ -694,27 +694,27 @@ def create_app():
     @app.route("/api")
     def api_handler():
         forced_target = request.args.get("target")
-        # Load vv.json
+
+        # Load accounts from vv.json
         try:
             with open("vv.json", "r", encoding="utf-8") as f:
                 accounts = json.load(f)
-        except Exception:
-            return jsonify({"error": "vv.json not found or invalid", "status": "failed"}), 400
+        except Exception as e:
+            return jsonify({"error": str(e), "status": "failed"}), 400
 
         results = {}
-        # sequentially process each account to be serverless-friendly
+
         for uid, pwd in accounts.items():
             runner = FF_Client_single_run(uid, pwd, forced_target=forced_target)
             ok, err = runner.run()
             results[uid] = {"ok": ok, "error": err}
-            # brief pause to avoid hammering provider
-            time.sleep(0.2)
+            time.sleep(0.2)   # serverless safe pause
 
-        return jsonify({"status": "done", "results": results, "processed": len(accounts), "forced_target": forced_target})
+        return jsonify({
+            "status": "done",
+            "processed": len(accounts),
+            "forced_target": forced_target,
+            "results": results
+        })
 
     return app
-
-# If running locally (for debugging), run Flask
-if __name__ == "__main__":
-    app = create_app()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8888")))
